@@ -1,0 +1,148 @@
+networks:
+  luca-network:
+    driver: bridge
+
+services:
+
+  # 0. FRONTEND : Application Flask LUCA
+  web:
+    build: .
+    container_name: luca-web
+    ports:
+      - "5000:5000"
+    networks:
+      - luca-network
+    depends_on:
+      - elasticsearch
+      - minio
+    volumes:
+      - ./app.py:/app/app.py
+      - ./services.py:/app/services.py
+      - ./templates:/app/templates
+      - ./scripts:/app/scripts
+    environment:
+      - ELASTICSEARCH_HOST=http://elasticsearch:9200
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_ACCESS_KEY=luca_admin
+      - MINIO_SECRET_KEY=luca_password
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - FLASK_DEBUG=1
+    mem_limit: 300m
+    mem_reservation: 150m
+
+  # 1. DATA LAKE : MinIO
+  minio:
+    image: minio/minio:latest
+    container_name: luca-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - luca-network
+    volumes:
+      - ./data/minio:/data
+    environment:
+      MINIO_ROOT_USER: luca_admin
+      MINIO_ROOT_PASSWORD: luca_password
+    command: server /data --console-address ":9001"
+    mem_limit: 300m
+    mem_reservation: 150m
+
+  # 2. INGESTION : Apache Kafka
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: luca-kafka
+    ports:
+      - "9092:9092"
+    networks:
+      - luca-network
+    volumes:
+      - ./data/kafka:/var/lib/kafka/data
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REREPLICATION_FACTOR: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:29093'
+      KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:29092,CONTROLLER://0.0.0.0:29093,PLAINTEXT_HOST://0.0.0.0:9092'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_LOG_DIRS: '/var/lib/kafka/data'
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+      KAFKA_HEAP_OPTS: '-Xmx350m -Xms350m'
+    mem_limit: 600m
+    mem_reservation: 400m
+
+  # 3. STOCKAGE ANALYTIQUE : Elasticsearch
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: luca-elasticsearch
+    ports:
+      - "9200:9200"
+    networks:
+      - luca-network
+    volumes:
+      - ./data/elasticsearch:/usr/share/elasticsearch/data
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms400m -Xmx400m"
+    mem_limit: 800m
+    mem_reservation: 500m
+
+  # 4. ENGINE CALCUL : Apache Spark + Jupyter
+  spark-jupyter:
+    image: jupyter/pyspark-notebook:latest
+    container_name: luca-spark-jupyter
+    ports:
+      - "8888:8888"
+      - "4040:4040"
+    networks:
+      - luca-network
+    volumes:
+      - ./notebook/work:/home/jovyan/work
+      - ./spark/apps:/opt/spark-apps
+      - ./spark/jars:/opt/spark-jars
+      - ./scripts:/home/jovyan/work/scripts
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      - ELASTICSEARCH_HOST=http://elasticsearch:9200
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_ACCESS_KEY=luca_admin
+      - MINIO_SECRET_KEY=luca_password
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    command: start-notebook.sh --NotebookApp.token=''
+    mem_limit: 1000m
+    mem_reservation: 600m
+
+  # 5. ORCHESTRATEUR : Apache Airflow
+  airflow:
+    image: apache/airflow:2.7.2-python3.10
+    container_name: luca-airflow
+    privileged: true
+    ports:
+      - "8080:8080"
+    networks:
+      - luca-network
+    volumes:    
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs # 💡 Corrigé : dossier local à la place du volume nommé
+      - ./scripts:/opt/scripts
+      - ./spark/apps:/opt/spark-apps
+      - ./airflow/airflow.db:/opt/airflow/airflow.db
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=sqlite:////opt/airflow/airflow.db
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - _PIP_ADDITIONAL_REQUIREMENTS=kafka-python boto3 elasticsearch requests pandas pyarrow 
+      - ELASTICSEARCH_HOST=http://elasticsearch:9200
+      - MINIO_ENDPOINT=http://minio:9000
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    command: bash -c "airflow db upgrade && airflow standalone"
+    mem_limit: 1200m
+    mem_reservation: 600m
