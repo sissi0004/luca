@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block titre %}LUCA - Carte Mondiale{% endblock %}
+{% block contenu %}
+
+<h4 class="mb-1">🗺️ Carte Mondiale du Climat</h4>
+<p class="text-muted">Vue d'ensemble par pays, avec zoom sur les régions.</p>
+
+{% if erreur %}
+<div class="alert alert-warning">{{ erreur }}</div>
+{% else %}
+
+<div class="card card-metric p-3 mb-4 bg-white">
+    <h6>🌍 Température moyenne par pays</h6>
+    {{ div_monde | safe }}
+</div>
+
+<div class="card card-metric p-3 mb-4 bg-white">
+    <h6>🔎 Zoom sur les régions d'un pays</h6>
+    <form method="GET" action="/" class="row g-2 align-items-end mb-3">
+        <div class="col-auto">
+            <label class="form-label">Pays :</label>
+            <select name="pays" class="form-select" onchange="this.form.submit()">
+                {% for p in liste_pays %}
+                <option value="{{ p }}" {% if p == pays_selectionne %}selected{% endif %}>{{ p }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </form>
+
+    {% if div_regions %}
+        {{ div_regions | safe }}
+        <table class="table table-sm table-striped mt-3">
+            <thead>
+                <tr><th>Région</th><th>Température (°C)</th><th>Prédiction J+1 (°C)</th><th>Humidité (%)</th><th>Précipitations (mm)</th></tr>
+            </thead>
+            <tbody>
+                {% for r in tableau_regions %}
+                <tr>
+                    <td>{{ r.region }}</td>
+                    <td>{{ r.temperature }}</td>
+                    <td>{{ r.temperature_predite }}</td>
+                    <td>{{ r.humidite }}</td>
+                    <td>{{ r.precipitations }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="text-muted">Aucune donnée régionale disponible pour ce pays.</p>
+    {% endif %}
+</div>
+
+{% endif %}
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block titre %}LUCA - Analyse & Prédictions{% endblock %}
+{% block contenu %}
+
+<h4 class="mb-1">🔍 Analyse Climatique & Prédictions</h4>
+<p class="text-muted">Détection d'anomalies, recommandations et prévision du climat pour le lendemain (J+1).</p>
+
+<div class="card card-metric p-3 mb-4 bg-white">
+    <form method="GET" action="/analyse" class="row g-3 align-items-end">
+        <div class="col-auto">
+            <label class="form-label">Pays :</label>
+            <select name="pays" class="form-select" onchange="this.form.submit()">
+                {% for p in liste_pays %}
+                <option value="{{ p }}" {% if p == pays_selectionne %}selected{% endif %}>{{ p }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label">Région :</label>
+            <select name="region" class="form-select" onchange="this.form.submit()">
+                <option value="toutes" {% if region_selectionnee == "toutes" %}selected{% endif %}>Toutes les régions</option>
+                {% for r in regions_dispo %}
+                <option value="{{ r }}" {% if r == region_selectionnee %}selected{% endif %}>{{ r }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </form>
+</div>
+
+{% if erreur %}
+<div class="alert alert-warning">{{ erreur }}</div>
+
+{% elif vue == "detail" %}
+<h5 class="mb-3">📍 {{ region_selectionnee }}, {{ pays_selectionne }}</h5>
+
+<div class="row text-center mb-4">
+    <div class="col-md-3"><div class="card card-metric p-3 bg-white"><small class="text-muted">🌡️ Température actuelle</small><h3 class="text-primary mt-1">{{ temp_actuelle }} °C</h3></div></div>
+    <div class="col-md-3"><div class="card card-metric p-3 bg-white"><small class="text-muted">🔮 Prédiction J+1</small><h3 class="text-danger mt-1">{{ temp_predite }} °C</h3></div></div>
+    <div class="col-md-3"><div class="card card-metric p-3 bg-white"><small class="text-muted">💧 Humidité moyenne</small><h3 class="text-info mt-1">{{ humidite }} %</h3></div></div>
+    <div class="col-md-3"><div class="card card-metric p-3 bg-white"><small class="text-muted">🥵 Humidex</small><h3 class="text-warning mt-1">{{ humidex }}</h3></div></div>
+</div>
+
+<h6>💡 Anomalies & Recommandations</h6>
+{% for a in anomalies %}
+<div class="anomaly-card" style="border-color:{{ a.couleur }}; background-color:{{ a.couleur }}15;">
+    <strong>{{ a.titre }}</strong><br>{{ a.texte }}
+</div>
+{% endfor %}
+
+<div class="card card-metric p-3 mt-3 bg-white">
+    <h6>📈 Historique observé vs prédit</h6>
+    {{ div_chart | safe }}
+</div>
+
+{% elif vue == "consolide" %}
+<h5 class="mb-3">📍 Analyse consolidée — {{ pays_selectionne }} (toutes régions)</h5>
+
+<table class="table table-striped">
+    <thead><tr><th>Région</th><th>Température (°C)</th><th>Prédiction J+1 (°C)</th><th>Humidité (%)</th><th>Statut</th></tr></thead>
+    <tbody>
+        {% for row in tableau %}
+        <tr>
+            <td>{{ row.region }}</td><td>{{ row.temperature }}</td><td>{{ row.temperature_predite }}</td>
+            <td>{{ row.humidite }}</td><td>{{ row.statut }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<h6 class="mt-4">💡 Détail par région</h6>
+<div class="accordion" id="accordeonRegions">
+    {% for d in details %}
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#region{{ loop.index }}">
+                📍 {{ d.region }} — {{ d.temperature }} °C actuellement
+            </button>
+        </h2>
+        <div id="region{{ loop.index }}" class="accordion-collapse collapse" data-bs-parent="#accordeonRegions">
+            <div class="accordion-body">
+                {% for a in d.anomalies %}
+                <div class="anomaly-card" style="border-color:{{ a.couleur }}; background-color:{{ a.couleur }}15;">
+                    <strong>{{ a.titre }}</strong><br>{{ a.texte }}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}
