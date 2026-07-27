@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block titre %}LUCA - Dashboard{% endblock %}
+{% block contenu %}
+
+<h4 class="mb-1">📊 Dashboard Global</h4>
+<p class="text-muted">Indicateurs clés issus du pipeline Kafka → Spark ML → Elasticsearch.</p>
+
+<div class="card card-metric p-3 mb-4 bg-white">
+    <form method="GET" action="/dashboard" class="row g-3 align-items-end">
+        <div class="col-auto">
+            <label class="form-label">Pays :</label>
+            <select name="pays" class="form-select" onchange="this.form.submit()">
+                {% for p in liste_pays %}
+                <option value="{{ p }}" {% if p == pays_selectionne %}selected{% endif %}>{{ p }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label">Région :</label>
+            <select name="region" class="form-select" onchange="this.form.submit()">
+                <option value="toutes" {% if region_selectionnee == "toutes" %}selected{% endif %}>Toutes les régions</option>
+                {% for r in regions_dispo %}
+                <option value="{{ r }}" {% if r == region_selectionnee %}selected{% endif %}>{{ r }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-auto">
+            <a class="btn btn-outline-primary" href="/dashboard/export.csv?pays={{ pays_selectionne }}&region={{ region_selectionnee }}">⬇️ Exporter en CSV</a>
+        </div>
+    </form>
+</div>
+
+{% if erreur %}
+<div class="alert alert-warning">{{ erreur }}</div>
+{% else %}
+
+<div class="row text-center mb-4">
+    <div class="col-md-2-4 col-md-2"><div class="card card-metric p-3 bg-white"><small class="text-muted">🌡️ Actuelle</small><h4 class="text-primary mt-1">{{ temp_actuelle }} °C</h4></div></div>
+    <div class="col-md-2"><div class="card card-metric p-3 bg-white"><small class="text-muted">🔮 J+1</small><h4 class="text-danger mt-1">{{ temp_predite }} °C</h4></div></div>
+    <div class="col-md-2"><div class="card card-metric p-3 bg-white"><small class="text-muted">💧 Humidité</small><h4 class="text-info mt-1">{{ humidite_moy }} %</h4></div></div>
+    <div class="col-md-3"><div class="card card-metric p-3 bg-white"><small class="text-muted">🌧️ Précipitations</small><h4 class="text-primary mt-1">{{ precip_totale }} mm</h4></div></div>
+    <div class="col-md-2"><div class="card card-metric p-3 bg-white"><small class="text-muted">🥵 Humidex</small><h4 class="text-warning mt-1">{{ humidex }}</h4></div></div>
+</div>
+
+<div class="row">
+    <div class="col-md-8 mb-4">
+        <div class="card card-metric p-3 bg-white h-100">
+            <h6>📈 Tendance : {{ pays_selectionne }}{% if region_selectionnee != "toutes" %} — {{ region_selectionnee }}{% endif %}</h6>
+            {{ div_ligne | safe }}
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card card-metric p-3 bg-white h-100">
+            <h6>🌦️ Précipitations récentes</h6>
+            {{ div_barres | safe }}
+        </div>
+    </div>
+</div>
+
+<div class="card card-metric p-3 bg-white">
+    <h6>📂 Données unifiées</h6>
+    <div style="max-height:350px; overflow:auto;">
+    <table class="table table-sm table-striped">
+        <thead><tr>{% for c in tableau[0].keys() if tableau %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+        <tbody>
+            {% for row in tableau %}
+            <tr>{% for v in row.values() %}<td>{{ v }}</td>{% endfor %}</tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+
+{% endif %}
+{% endblock %}

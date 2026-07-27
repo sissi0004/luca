@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block titre %}LUCA - Smart Climate Analytics{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .navbar-brand { font-weight: 700; }
+        .hero-section { background-color: #1e3a8a; color: white; padding: 26px; margin-bottom: 30px; text-align: center; }
+        .hero-section p { margin: 0; font-style: italic; opacity: 0.9; }
+        .card-metric { border: none; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .anomaly-card { border-left: 5px solid; border-radius: 6px; padding: 14px; margin-bottom: 10px; }
+        .nav-link.active { font-weight: 700; text-decoration: underline; }
+    </style>
+    {% block head_extra %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">🌍 LUCA</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navMenu">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">🗺️ Carte Mondiale</a></li>
+                    <li class="nav-item"><a class="nav-link {% if request.path == '/analyse' %}active{% endif %}" href="/analyse">🔍 Analyse & Prédictions</a></li>
+                    <li class="nav-item"><a class="nav-link {% if request.path == '/dashboard' %}active{% endif %}" href="/dashboard">📊 Dashboard</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="hero-section">
+        <h2>🌍 LUCA : Logical Unified Climate Analytics</h2>
+        <p>Application web d'analyse comparative des données météorologiques et de l'impact du réchauffement climatique entre plusieurs pays.</p>
+    </div>
+
+    <div class="container pb-5">
+        {% block contenu %}{% endblock %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
